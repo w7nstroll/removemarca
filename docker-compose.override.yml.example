@@ -1,0 +1,34 @@
+# docker-compose.override.yml.example
+# Copy to docker-compose.override.yml for local development overrides
+# This file is ignored by git (add to .gitignore)
+
+services:
+  limpapdf:
+    # Build from local source (no cache for faster iteration)
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Override container name for local dev
+    container_name: limpapdf-dev
+    # Bind mount source code for hot reload
+    volumes:
+      - ./app:/app:ro
+    # Expose port on all interfaces for local access
+    ports:
+      - "8501:8501"
+    # Override environment for local dev
+    environment:
+      TZ: America/Recife
+      MAX_UPLOAD_MB: "100"
+      # Enable Streamlit debug mode
+      STREAMLIT_LOGGER_LEVEL: debug
+    # Remove resource limits for local dev
+    mem_limit: 4g
+    cpus: 4.0
+    # Keep security opts but allow debugging
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Override command for hot reload
+    command: ["streamlit", "run", "limpapdf.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.runOnSave=true"]

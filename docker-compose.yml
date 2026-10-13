@@ -1,0 +1,75 @@
+services:
+  limpapdf:
+    build:
+      context: .
+    container_name: limpapdf
+    restart: unless-stopped
+    init: true
+    ports:
+      - "8501:8501"
+    environment:
+      TZ: America/Recife
+      MAX_UPLOAD_MB: "100"
+      # Stirling-PDF connection (internal Docker network)
+      STIRLING_PDF_BASE_URL: "http://stirling-pdf:8080"
+      STIRLING_PDF_TIMEOUT: "300"
+      STIRLING_PDF_MAX_RETRIES: "2"
+    mem_limit: 2g
+    cpus: 2.0
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      stirling-pdf:
+        condition: service_healthy
+
+  stirling-pdf:
+    image: frooodle/s-pdf:latest
+    container_name: stirling-pdf
+    restart: unless-stopped
+    init: true
+    privileged: true
+    ports:
+      - "8080:8080"
+    environment:
+      # Enable LibreOffice for PDF->DOCX/ODT conversion
+      INSTALL_BOOK_AND_ADVANCED_OPS: "true"
+      # Run without API key authentication (app auto-connects without manual key)
+      SECURITY_ENABLELOGIN: "false"
+      # Optional: Set custom API key (uncomment and set value)
+      # SECURITY_CUSTOMGLOBALAPIKEY: "your-secret-api-key"
+      # Resource limits for conversion workloads
+      JAVA_OPTIONS: "-Xmx2g -Xms512m"
+      # Fix permission issues: run as host user (UID 1000 = first Linux user)
+      PUID: "1000"
+      PGID: "1000"
+    mem_limit: 4g
+    cpus: 2.0
+    security_opt:
+      - no-new-privileges:true
+    # LibreOffice sandbox needs some capabilities; don't drop ALL
+    # cap_drop:
+    #   - ALL
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
+    volumes:
+      # Named volumes for persistence with correct permissions
+      - stirling-configs:/configs
+      - stirling-logs:/logs
+      - stirling-custom:/customFiles
+      - stirling-pipeline:/pipeline
+      - stirling-storage:/storage
+      - stirling-tessdata:/usr/share/tessdata
+
+volumes:
+  stirling-configs:
+  stirling-logs:
+  stirling-custom:
+  stirling-pipeline:
+  stirling-storage:
+  stirling-tessdata:

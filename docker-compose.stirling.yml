@@ -1,0 +1,55 @@
+# Standalone Stirling-PDF Docker Compose
+# Use this if running Stirling-PDF on a separate host or network
+# Copy to docker-compose.stirling.yml and run: docker compose -f docker-compose.stirling.yml up -d
+
+services:
+  stirling-pdf:
+    image: frooodle/s-pdf:latest
+    container_name: stirling-pdf
+    restart: unless-stopped
+    init: true
+    ports:
+      - "8080:8080"  # Expose on all interfaces (0.0.0.0:8080)
+      # For local-only: "127.0.0.1:8080:8080"
+    environment:
+      # Enable LibreOffice for PDF->DOCX/ODT conversion
+      INSTALL_BOOK_AND_ADVANCED_OPS: "true"
+      # Optional: Set custom global API key for authentication
+      # SECURITY_CUSTOMGLOBALAPIKEY: "your-secret-api-key-here"
+      # JVM tuning for conversion workloads
+      JAVA_OPTIONS: "-Xmx2g -Xms512m"
+      # Locale
+      LANG: "pt_BR.UTF-8"
+      LC_ALL: "pt_BR.UTF-8"
+      # Fix permission issues: run as host user (UID 1000 = first Linux user)
+      PUID: "1000"
+      PGID: "1000"
+    mem_limit: 4g
+    cpus: 2.0
+    security_opt:
+      - no-new-privileges:true
+    # LibreOffice sandbox needs some capabilities; don't drop ALL
+    # cap_drop:
+    #   - ALL
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
+    volumes:
+      # Named volumes for persistence with correct permissions
+      - stirling-configs:/configs
+      - stirling-logs:/logs
+      - stirling-custom:/customFiles
+      - stirling-pipeline:/pipeline
+      - stirling-storage:/storage
+      - stirling-tessdata:/usr/share/tessdata
+
+volumes:
+  stirling-configs:
+  stirling-logs:
+  stirling-custom:
+  stirling-pipeline:
+  stirling-storage:
+  stirling-tessdata:
